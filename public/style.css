@@ -168,3 +168,41 @@ button:hover { background: var(--accent-dark); }
   font-weight: 500;
 }
 .remove-link:hover { background: transparent; text-decoration: underline; }
+
+.agent-panel {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.agent-panel h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+.chat-log {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.chat-empty { color: var(--muted); font-size: 13px; margin: 0; }
+
+.chat-msg {
+  font-size: 14px;
+  line-height: 1.4;
+  padding: 8px 10px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+}
+.chat-msg strong { font-size: 12px; }
+.chat-user { background: #eef0ff; align-self: flex-end; max-width: 90%; }
+.chat-assistant { background: #f3f4f6; align-self: flex-start; max-width: 90%; }
+
+.chat-form { display: flex; gap: 8px; }
+.chat-form input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+}
+.chat-form button { padding: 8px 14px; }

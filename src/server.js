@@ -1,6 +1,8 @@
 const express = require('express');
 const path = require('path');
+const Anthropic = require('@anthropic-ai/sdk');
 const store = require('./store');
+const agent = require('./agent');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,6 +40,40 @@ app.patch('/api/employees/:id/tasks/:taskId', (req, res) => {
   const employee = store.setTaskDone(req.params.id, req.params.taskId, done);
   if (!employee) return res.status(404).json({ error: 'Employee or task not found' });
   res.json(employee);
+});
+
+app.post('/api/employees/:id/agent/message', async (req, res) => {
+  const { message } = req.body || {};
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'message is required' });
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ error: 'ANTHROPIC_API_KEY is not configured on the server' });
+  }
+  try {
+    const result = await agent.chat(req.params.id, message);
+    res.json(result);
+  } catch (err) {
+    if (err.statusCode === 404) {
+      return res.status(404).json({ error: err.message });
+    }
+    if (err instanceof Anthropic.AuthenticationError) {
+      return res.status(502).json({ error: 'Invalid Anthropic API key' });
+    }
+    if (err instanceof Anthropic.RateLimitError) {
+      return res.status(429).json({ error: 'Rate limited by Anthropic API, try again shortly' });
+    }
+    if (err instanceof Anthropic.APIError) {
+      return res.status(502).json({ error: `Anthropic API error: ${err.message}` });
+    }
+    console.error(err);
+    res.status(500).json({ error: 'Unexpected error talking to the onboarding agent' });
+  }
+});
+
+app.post('/api/employees/:id/agent/reset', (req, res) => {
+  agent.reset(req.params.id);
+  res.status(204).end();
 });
 
 app.listen(PORT, () => {

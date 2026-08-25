@@ -84,4 +84,14 @@ function setTaskDone(employeeId, taskId, done) {
   return employee;
 }
 
-module.exports = { list, get, create, remove, setTaskDone, buildChecklist };
+function addTask(employeeId, title, category) {
+  const employees = readAll();
+  const employee = employees.find((e) => e.id === Number(employeeId));
+  if (!employee) return null;
+  const taskId = employee.checklist.reduce((max, t) => Math.max(max, t.id), 0) + 1;
+  employee.checklist.push({ id: taskId, title, category, done: false });
+  writeAll(employees);
+  return employee;
+}
+
+module.exports = { list, get, create, remove, setTaskDone, addTask, buildChecklist };

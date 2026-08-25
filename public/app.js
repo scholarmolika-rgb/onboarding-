@@ -44,6 +44,10 @@ function renderList(employees) {
     });
 }
 
+// Chat transcripts per employee, kept client-side only (server also keeps its
+// own copy for the agent's context, but the UI doesn't re-fetch history).
+const chatLogs = new Map();
+
 function groupByCategory(checklist) {
   const groups = {};
   checklist.forEach((task) => {
@@ -89,7 +93,18 @@ function renderDetail(employee) {
       <button class="remove-link" data-remove="${employee.id}">Remove</button>
     </div>
     ${checklistHtml}
+    <div class="agent-panel">
+      <h4>Onboarding Assistant</h4>
+      <div id="chat-log" class="chat-log"></div>
+      <form id="chat-form" class="chat-form" data-employee="${employee.id}">
+        <input id="chat-input" type="text" placeholder="Ask about ${escapeHtml(employee.name)}'s onboarding..." autocomplete="off" />
+        <button type="submit">Send</button>
+      </form>
+    </div>
   `;
+
+  renderChatLog(employee.id);
+  document.getElementById('chat-form').addEventListener('submit', (e) => handleChatSubmit(e, employee.id));
 
   detailBodyEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
     cb.addEventListener('change', async (e) => {
@@ -113,6 +128,67 @@ function renderDetail(employee) {
     modalEl.classList.add('hidden');
     refreshList();
   });
+}
+
+function renderChatLog(employeeId) {
+  const logEl = document.getElementById('chat-log');
+  if (!logEl) return;
+  const log = chatLogs.get(employeeId) || [];
+  if (log.length === 0) {
+    logEl.innerHTML = '<p class="chat-empty">Ask for a personalized plan, or tell it what\'s been done - it can update the checklist for you.</p>';
+  } else {
+    logEl.innerHTML = log
+      .map(
+        (msg) => `<div class="chat-msg chat-${msg.role}"><strong>${msg.role === 'user' ? 'You' : 'Assistant'}:</strong> ${escapeHtml(msg.text)}</div>`
+      )
+      .join('');
+  }
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+async function handleChatSubmit(e, employeeId) {
+  e.preventDefault();
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  input.disabled = true;
+
+  const log = chatLogs.get(employeeId) || [];
+  log.push({ role: 'user', text });
+  chatLogs.set(employeeId, log);
+  renderChatLog(employeeId);
+
+  try {
+    const res = await fetch(`/api/employees/${employeeId}/agent/message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      log.push({ role: 'assistant', text: `Error: ${data.error || 'something went wrong'}` });
+      chatLogs.set(employeeId, log);
+      renderChatLog(employeeId);
+      return;
+    }
+    log.push({ role: 'assistant', text: data.reply || '(no response)' });
+    chatLogs.set(employeeId, log);
+    // The agent may have changed the checklist - re-render the whole detail
+    // view with fresh data, then restore the chat log and focus.
+    renderDetail(data.employee);
+    refreshList();
+  } catch (err) {
+    log.push({ role: 'assistant', text: 'Error: could not reach the onboarding assistant' });
+    chatLogs.set(employeeId, log);
+    renderChatLog(employeeId);
+  } finally {
+    const freshInput = document.getElementById('chat-input');
+    if (freshInput) {
+      freshInput.disabled = false;
+      freshInput.focus();
+    }
+  }
 }
 
 function escapeHtml(str) {
