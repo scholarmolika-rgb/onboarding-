@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const curriculum = require('./curriculum');
 
 const DATA_FILE = path.join(__dirname, '..', 'data', 'employees.json');
 
@@ -59,7 +60,8 @@ function create({ name, role, department, startDate }) {
     department,
     startDate,
     createdAt: new Date().toISOString(),
-    checklist: buildChecklist()
+    checklist: buildChecklist(),
+    curriculum: curriculum.buildProgress()
   };
   employees.push(employee);
   writeAll(employees);
@@ -94,4 +96,73 @@ function addTask(employeeId, title, category) {
   return employee;
 }
 
-module.exports = { list, get, create, remove, setTaskDone, addTask, buildChecklist };
+function getCurriculum(employeeId) {
+  const employee = get(employeeId);
+  if (!employee) return null;
+  // Backfill for employees created before the curriculum feature existed.
+  const progress = employee.curriculum || curriculum.buildProgress();
+
+  const days = curriculum.TEMPLATE.map((t) => {
+    const entry = progress.find((p) => p.day === t.day) || { done: false, reflection: '' };
+    return { ...t, done: entry.done, reflection: entry.reflection };
+  });
+  const completedDays = days.filter((d) => d.done).length;
+
+  return {
+    employeeId: employee.id,
+    startDate: employee.startDate,
+    currentDay: curriculum.currentDayFor(employee.startDate),
+    completedDays,
+    totalDays: days.length,
+    categories: curriculum.categories(),
+    days
+  };
+}
+
+function setCurriculumDay(employeeId, day, { done, reflection }) {
+  const employees = readAll();
+  const employee = employees.find((e) => e.id === Number(employeeId));
+  if (!employee) return null;
+  if (!employee.curriculum) employee.curriculum = curriculum.buildProgress();
+
+  let entry = employee.curriculum.find((p) => p.day === Number(day));
+  if (!entry) {
+    entry = { day: Number(day), done: false, reflection: '' };
+    employee.curriculum.push(entry);
+  }
+  if (typeof done === 'boolean') entry.done = done;
+  if (typeof reflection === 'string') entry.reflection = reflection;
+
+  writeAll(employees);
+  return getCurriculum(employeeId);
+}
+
+function curriculumSummary() {
+  return readAll().map((e) => {
+    const progress = e.curriculum || curriculum.buildProgress();
+    const completedDays = progress.filter((p) => p.done).length;
+    return {
+      id: e.id,
+      name: e.name,
+      role: e.role,
+      department: e.department,
+      startDate: e.startDate,
+      currentDay: curriculum.currentDayFor(e.startDate),
+      completedDays,
+      totalDays: curriculum.TEMPLATE.length
+    };
+  });
+}
+
+module.exports = {
+  list,
+  get,
+  create,
+  remove,
+  setTaskDone,
+  addTask,
+  buildChecklist,
+  getCurriculum,
+  setCurriculumDay,
+  curriculumSummary
+};

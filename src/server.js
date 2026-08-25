@@ -42,6 +42,27 @@ app.patch('/api/employees/:id/tasks/:taskId', (req, res) => {
   res.json(employee);
 });
 
+app.get('/api/employees/:id/curriculum', (req, res) => {
+  const curriculum = store.getCurriculum(req.params.id);
+  if (!curriculum) return res.status(404).json({ error: 'Employee not found' });
+  res.json(curriculum);
+});
+
+app.patch('/api/employees/:id/curriculum/:day', (req, res) => {
+  const { done, reflection } = req.body || {};
+  const day = Number(req.params.day);
+  if (!Number.isInteger(day) || day < 1 || day > 30) {
+    return res.status(400).json({ error: 'day must be an integer between 1 and 30' });
+  }
+  const curriculum = store.setCurriculumDay(req.params.id, day, { done, reflection });
+  if (!curriculum) return res.status(404).json({ error: 'Employee not found' });
+  res.json(curriculum);
+});
+
+app.get('/api/admin/curriculum', (req, res) => {
+  res.json(store.curriculumSummary());
+});
+
 app.post('/api/employees/:id/agent/message', async (req, res) => {
   const { message } = req.body || {};
   if (!message || typeof message !== 'string') {

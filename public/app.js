@@ -48,6 +48,14 @@ function renderList(employees) {
 // own copy for the agent's context, but the UI doesn't re-fetch history).
 const chatLogs = new Map();
 
+// Curriculum state, per employee - cached data plus UI state that should
+// survive a re-render but reset when a different employee is opened.
+const curriculumCache = new Map();
+const curriculumUiState = new Map(); // employeeId -> { filter, selectedDay }
+
+let activeTab = 'checklist';
+let currentEmployeeId = null;
+
 function groupByCategory(checklist) {
   const groups = {};
   checklist.forEach((task) => {
@@ -57,10 +65,12 @@ function groupByCategory(checklist) {
   return groups;
 }
 
-async function openDetail(id) {
+async function openDetail(id, options = {}) {
   const res = await fetch(`/api/employees/${id}`);
   if (!res.ok) return;
   const employee = await res.json();
+  currentEmployeeId = String(id);
+  activeTab = options.tab || 'checklist';
   renderDetail(employee);
   modalEl.classList.remove('hidden');
 }
@@ -83,18 +93,34 @@ function renderDetail(employee) {
     checklistHtml += '</div>';
   });
 
+  const tab = (name) => (activeTab === name ? 'tab-btn active' : 'tab-btn');
+  const panel = (name) => (activeTab === name ? 'tab-panel' : 'tab-panel hidden');
+
   detailBodyEl.innerHTML = `
     <div class="detail-header">
       <div>
         <h2>${escapeHtml(employee.name)}</h2>
         <p>${escapeHtml(employee.role)} · ${escapeHtml(employee.department)} · starts ${employee.startDate}</p>
-        <p>${done}/${total} tasks complete (${pct}%)</p>
+        <p>${done}/${total} onboarding tasks complete (${pct}%)</p>
       </div>
       <button class="remove-link" data-remove="${employee.id}">Remove</button>
     </div>
-    ${checklistHtml}
-    <div class="agent-panel">
-      <h4>Onboarding Assistant</h4>
+
+    <div class="tab-nav">
+      <button class="${tab('checklist')}" data-tab="checklist">Checklist</button>
+      <button class="${tab('curriculum')}" data-tab="curriculum">30-Day Plan</button>
+      <button class="${tab('assistant')}" data-tab="assistant">Assistant</button>
+    </div>
+
+    <div class="${panel('checklist')}" data-panel="checklist">
+      ${checklistHtml}
+    </div>
+
+    <div class="${panel('curriculum')}" data-panel="curriculum">
+      <div id="curriculum-body">Loading 30-day plan...</div>
+    </div>
+
+    <div class="${panel('assistant')}" data-panel="assistant">
       <div id="chat-log" class="chat-log"></div>
       <form id="chat-form" class="chat-form" data-employee="${employee.id}">
         <input id="chat-input" type="text" placeholder="Ask about ${escapeHtml(employee.name)}'s onboarding..." autocomplete="off" />
@@ -103,10 +129,20 @@ function renderDetail(employee) {
     </div>
   `;
 
-  renderChatLog(employee.id);
-  document.getElementById('chat-form').addEventListener('submit', (e) => handleChatSubmit(e, employee.id));
+  detailBodyEl.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      activeTab = btn.dataset.tab;
+      renderDetail(employee);
+    });
+  });
 
-  detailBodyEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+  if (activeTab === 'curriculum') loadCurriculum(employee.id);
+  if (activeTab === 'assistant') {
+    renderChatLog(employee.id);
+    document.getElementById('chat-form').addEventListener('submit', (e) => handleChatSubmit(e, employee.id));
+  }
+
+  detailBodyEl.querySelectorAll('input[type="checkbox"][data-task]').forEach((cb) => {
     cb.addEventListener('change', async (e) => {
       const empId = e.target.dataset.employee;
       const taskId = e.target.dataset.task;
@@ -129,6 +165,154 @@ function renderDetail(employee) {
     refreshList();
   });
 }
+
+// ---------- 30-Day Plan tab ----------
+
+async function loadCurriculum(employeeId) {
+  const res = await fetch(`/api/employees/${employeeId}/curriculum`);
+  if (!res.ok) {
+    document.getElementById('curriculum-body').innerHTML = '<p class="empty-state">Could not load the 30-day plan.</p>';
+    return;
+  }
+  const data = await res.json();
+  curriculumCache.set(String(employeeId), data);
+  if (!curriculumUiState.has(String(employeeId))) {
+    curriculumUiState.set(String(employeeId), { filter: 'All', selectedDay: data.currentDay });
+  }
+  renderCurriculum(employeeId);
+}
+
+function renderCurriculum(employeeId) {
+  const key = String(employeeId);
+  const data = curriculumCache.get(key);
+  const ui = curriculumUiState.get(key);
+  const container = document.getElementById('curriculum-body');
+  if (!data || !container) return;
+
+  const pct = Math.round((data.completedDays / data.totalDays) * 100);
+  const filters = ['All', ...data.categories];
+  const filterChips = filters
+    .map(
+      (f) =>
+        `<button class="filter-chip ${ui.filter === f ? 'active' : ''}" data-filter="${escapeHtml(f)}">${escapeHtml(f)}</button>`
+    )
+    .join('');
+
+  const dayCells = data.days
+    .map((d) => {
+      const matches = ui.filter === 'All' || d.category === ui.filter;
+      const classes = ['day-cell'];
+      if (d.done) classes.push('done');
+      if (d.day === data.currentDay) classes.push('current');
+      if (d.day === ui.selectedDay) classes.push('selected');
+      if (!matches) classes.push('dimmed');
+      return `<button class="${classes.join(' ')}" data-day="${d.day}">${d.day}</button>`;
+    })
+    .join('');
+
+  const selected = data.days.find((d) => d.day === ui.selectedDay) || data.days[0];
+
+  container.innerHTML = `
+    <div class="curriculum-progress">
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+        <span class="progress-label">${data.completedDays}/${data.totalDays} days complete</span>
+      </div>
+      <span class="current-day-badge">Day ${data.currentDay} of ${data.totalDays}</span>
+    </div>
+
+    <div class="filter-chips">${filterChips}</div>
+
+    <div class="day-grid">${dayCells}</div>
+
+    <div class="day-detail">
+      <div class="day-detail-head">
+        <span class="category-tag">${escapeHtml(selected.category)}</span>
+        <h4>Day ${selected.day}: ${escapeHtml(selected.title)}</h4>
+      </div>
+      <p class="day-description">${escapeHtml(selected.description)}</p>
+      <label class="task-row">
+        <input type="checkbox" id="day-done" ${selected.done ? 'checked' : ''} />
+        Mark day ${selected.day} complete
+      </label>
+      <label class="reflection-label" for="day-reflection">Reflection notes</label>
+      <textarea id="day-reflection" rows="3" placeholder="What did you learn today?">${escapeHtml(selected.reflection)}</textarea>
+      <div class="day-nav">
+        <button id="day-prev" ${selected.day <= 1 ? 'disabled' : ''}>&larr; Prev day</button>
+        <button id="day-mark-today">Mark today complete</button>
+        <button id="day-next" ${selected.day >= data.totalDays ? 'disabled' : ''}>Next day &rarr;</button>
+      </div>
+      <div class="curriculum-actions">
+        <button id="day-print">Print this day's plan</button>
+        <button id="curriculum-export">Export progress (JSON)</button>
+      </div>
+    </div>
+  `;
+
+  container.querySelectorAll('.filter-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      ui.filter = chip.dataset.filter;
+      renderCurriculum(employeeId);
+    });
+  });
+
+  container.querySelectorAll('.day-cell').forEach((cell) => {
+    cell.addEventListener('click', () => {
+      ui.selectedDay = Number(cell.dataset.day);
+      renderCurriculum(employeeId);
+    });
+  });
+
+  document.getElementById('day-done').addEventListener('change', async (e) => {
+    await patchCurriculumDay(employeeId, selected.day, { done: e.target.checked });
+  });
+
+  document.getElementById('day-reflection').addEventListener('blur', async (e) => {
+    await patchCurriculumDay(employeeId, selected.day, { reflection: e.target.value });
+  });
+
+  document.getElementById('day-prev').addEventListener('click', () => {
+    ui.selectedDay = Math.max(1, selected.day - 1);
+    renderCurriculum(employeeId);
+  });
+  document.getElementById('day-next').addEventListener('click', () => {
+    ui.selectedDay = Math.min(data.totalDays, selected.day + 1);
+    renderCurriculum(employeeId);
+  });
+  document.getElementById('day-mark-today').addEventListener('click', async () => {
+    await patchCurriculumDay(employeeId, data.currentDay, { done: true });
+    ui.selectedDay = data.currentDay;
+    renderCurriculum(employeeId);
+  });
+
+  document.getElementById('day-print').addEventListener('click', () => window.print());
+
+  document.getElementById('curriculum-export').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `onboarding-progress-employee-${employeeId}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+}
+
+async function patchCurriculumDay(employeeId, day, body) {
+  const res = await fetch(`/api/employees/${employeeId}/curriculum/${day}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) return;
+  const data = await res.json();
+  curriculumCache.set(String(employeeId), data);
+  renderCurriculum(employeeId);
+}
+
+// ---------- Assistant tab ----------
 
 function renderChatLog(employeeId) {
   const logEl = document.getElementById('chat-log');
@@ -175,7 +359,7 @@ async function handleChatSubmit(e, employeeId) {
     log.push({ role: 'assistant', text: data.reply || '(no response)' });
     chatLogs.set(employeeId, log);
     // The agent may have changed the checklist - re-render the whole detail
-    // view with fresh data, then restore the chat log and focus.
+    // view with fresh data, staying on the assistant tab.
     renderDetail(data.employee);
     refreshList();
   } catch (err) {
@@ -226,3 +410,10 @@ modalEl.addEventListener('click', (e) => {
 });
 
 refreshList();
+
+// Deep link from the admin dashboard: index.html?employee=3 opens that
+// employee straight into their 30-day plan.
+const deepLinkId = new URLSearchParams(window.location.search).get('employee');
+if (deepLinkId) {
+  openDetail(deepLinkId, { tab: 'curriculum' });
+}

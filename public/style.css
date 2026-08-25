@@ -26,6 +26,8 @@ header {
 
 header h1 { margin: 0 0 4px; font-size: 28px; }
 .subtitle { margin: 0; color: var(--muted); }
+.admin-link { display: inline-block; margin-top: 8px; font-size: 13px; color: var(--accent); text-decoration: none; }
+.admin-link:hover { text-decoration: underline; }
 
 main {
   max-width: 960px;
@@ -122,9 +124,9 @@ button:hover { background: var(--accent-dark); }
   background: var(--panel);
   border-radius: var(--radius);
   padding: 24px;
-  max-width: 520px;
+  max-width: 640px;
   width: 100%;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
   position: relative;
 }
@@ -169,12 +171,26 @@ button:hover { background: var(--accent-dark); }
 }
 .remove-link:hover { background: transparent; text-decoration: underline; }
 
-.agent-panel {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  margin-top: 18px;
+  border-bottom: 1px solid var(--border);
 }
-.agent-panel h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.tab-btn {
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px 6px 0 0;
+  border-bottom: 2px solid transparent;
+}
+.tab-btn:hover { background: #f3f4f6; color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: transparent; }
+
+.tab-panel { padding-top: 16px; }
+.tab-panel.hidden { display: none; }
 
 .chat-log {
   max-height: 220px;
@@ -206,3 +222,122 @@ button:hover { background: var(--accent-dark); }
   font-size: 14px;
 }
 .chat-form button { padding: 8px 14px; }
+
+/* ---------- 30-Day Plan tab ---------- */
+
+.curriculum-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.current-day-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: #eef0ff;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.filter-chip {
+  background: #f3f4f6;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+}
+.filter-chip:hover { background: #e5e7eb; }
+.filter-chip.active { background: var(--accent); color: white; }
+
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.day-cell {
+  background: #f3f4f6;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 0;
+  border-radius: 6px;
+  border: 2px solid transparent;
+}
+.day-cell:hover { background: #e5e7eb; }
+.day-cell.done { background: #dcfce7; color: #15803d; }
+.day-cell.current { border-color: var(--accent); }
+.day-cell.selected { outline: 2px solid var(--accent-dark); outline-offset: 1px; }
+.day-cell.dimmed { opacity: 0.35; }
+
+.day-detail {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.day-detail-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.day-detail-head h4 { margin: 0; font-size: 15px; }
+.category-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  background: #eef0ff;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.day-description { color: var(--muted); font-size: 14px; margin: 8px 0 4px; }
+
+.reflection-label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+#day-reflection {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.day-nav { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.day-nav button { flex: 1; min-width: 100px; }
+.day-nav button:disabled { background: #d1d5db; cursor: not-allowed; }
+
+.curriculum-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.curriculum-actions button { background: transparent; color: var(--accent); border: 1px solid var(--accent); flex: 1; min-width: 140px; }
+.curriculum-actions button:hover { background: #eef0ff; }
+
+/* ---------- Admin dashboard ---------- */
+
+.admin-main { max-width: 960px; margin: 0 auto; padding: 16px 24px 48px; }
+.admin-panel { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.admin-table th {
+  text-align: left;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.admin-table td { padding: 10px; border-bottom: 1px solid var(--border); }
+.admin-table a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.admin-table a:hover { text-decoration: underline; }
+
+@media print {
+  body * { visibility: hidden; }
+  .day-detail, .day-detail * { visibility: visible; }
+  .day-detail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    border: none;
+  }
+  .day-nav, .curriculum-actions { display: none; }
+}

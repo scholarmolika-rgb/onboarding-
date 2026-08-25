@@ -33,9 +33,21 @@ employee for the lifetime of the server process. The agent has tools to view
 the checklist, check items off, and add role-specific tasks - it can act on
 the checklist directly instead of just describing what to do.
 
+## 30-day onboarding plan
+
+Each employee's detail view also has a "30-Day Plan" tab: a day-by-day
+curriculum (Foundation, Tools, Analysis, Communication, Shadow, Capstone)
+with a progress bar, category filter chips, a jump-to-day grid, per-day
+reflection notes, printable daily plans, and JSON export. The current day is
+auto-derived from the employee's start date. An admin dashboard at
+`/admin.html` lists every employee's current day and completion % in one
+table, with links back into their individual plan.
+
 ## Notes
 
 - Data is stored in `data/employees.json` (no external database required).
 - API: `GET/POST /api/employees`, `GET/DELETE /api/employees/:id`,
   `PATCH /api/employees/:id/tasks/:taskId`,
+  `GET /api/employees/:id/curriculum`, `PATCH /api/employees/:id/curriculum/:day`,
+  `GET /api/admin/curriculum`,
   `POST /api/employees/:id/agent/message`, `POST /api/employees/:id/agent/reset`.
