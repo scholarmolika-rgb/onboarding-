@@ -1,0 +1,17 @@
+{
+  "name": "hr-onboarding",
+  "version": "1.0.0",
+  "description": "Human Resources onboarding tracker for new hires",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

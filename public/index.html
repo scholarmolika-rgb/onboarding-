@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HR Onboarding</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>HR Onboarding</h1>
+    <p class="subtitle">Track new hires from offer to fully ramped</p>
+  </header>
+
+  <main>
+    <section class="panel new-hire-panel">
+      <h2>Add New Hire</h2>
+      <form id="new-hire-form">
+        <div class="field">
+          <label for="name">Full name</label>
+          <input id="name" name="name" required />
+        </div>
+        <div class="field">
+          <label for="role">Role</label>
+          <input id="role" name="role" required />
+        </div>
+        <div class="field">
+          <label for="department">Department</label>
+          <input id="department" name="department" required />
+        </div>
+        <div class="field">
+          <label for="startDate">Start date</label>
+          <input id="startDate" name="startDate" type="date" required />
+        </div>
+        <button type="submit">Add Employee</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>New Hires</h2>
+      <div id="employee-list" class="employee-list"></div>
+    </section>
+  </main>
+
+  <div id="detail-modal" class="modal hidden">
+    <div class="modal-content">
+      <button id="close-modal" class="close-btn">&times;</button>
+      <div id="detail-body"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
